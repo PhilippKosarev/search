@@ -58,9 +58,8 @@ class CLI:
       return files
     else:
       queue.put(files)
-  
+
   def get_files_threaded(self, path):
-    typewriter.print_status('Gathering files...')
     folders = drawer.get_folders(path)
     files = []
     if options.get('dirs').get('enabled'):
@@ -75,14 +74,15 @@ class CLI:
       processes.append(process)
     iteration = 0
     for process in processes:
-      typewriter.print_progress('Gathering', iteration, len(processes))
+      if options.get('quiet').get('enabled') is False:
+        typewriter.print_progress('Gathering', iteration, len(processes))
       files += queue.get()
       iteration += 1
     for process in processes:
       process.join()
     queue.close()
     return files
-    
+
   def find_files(self, files, search_term, queue=None):
     # Setting current core so it it doesn't bounce around cores wasting time
     current_process = psutil.Process()
@@ -109,14 +109,13 @@ class CLI:
       if eval(eval_string):
         matching_files.append(file)
       iteration += 1
-      if queue is None:
-        if num_of_files < 1000:
-          typewriter.print_progress('Searching', iteration, num_of_files)
+      if (options.get('quiet').get('enabled') is False) and (queue is None) and (num_of_files < 1000):
+        typewriter.print_progress('Searching', iteration, num_of_files)
     if queue is None:
       return sorted(matching_files)
     else:
       queue.put(matching_files)
-  
+
   def find_files_threaded(self, files, search_term):
     matching_files, processes = [], []
     queue = SimpleQueue()
@@ -129,17 +128,21 @@ class CLI:
       processes.append(process)
     iteration = 0
     for process in processes:
-      typewriter.print_progress('Searching', iteration * chunk_size, cpu_cores * chunk_size)
+      if options.get('quiet').get('enabled') is False:
+        typewriter.print_progress('Searching', iteration * chunk_size, cpu_cores * chunk_size)
       matching_files += queue.get()
       iteration += 1
     for process in processes:
       process.join()
     queue.close
     return sorted(matching_files)
-  
-  def count(self, path):
+
+
+  def get_files_wrapper(self, path):
     start_time = time.time()
     check_path(path)
+    if options.get('quiet').get('enabled') is False:
+      typewriter.print_status('Gathering files...')
     files = self.get_files_threaded(path)
     if len(files) == 0:
       typewriter.print(f"No files found in '{path}'")
@@ -147,13 +150,20 @@ class CLI:
     end_time = time.time()
     get_elapsed_time(start_time, end_time)
     elapsed = get_elapsed_time(start_time, end_time)
-    typewriter.print(f"Found {len(files):,} files in {elapsed}s.")
+    if options.get('quiet').get('enabled') is False:
+      typewriter.print(f"Found {len(files):,} files in {elapsed}s.")
     return files
-  
+
+  def count(self, path):
+    files = self.get_files_wrapper(path)
+    if options.get('quiet').get('enabled'):
+      typewriter.print(f"{len(files):,}")
+
   def search(self, search_term, path):
-    files = self.count(path)
+    files = self.get_files_wrapper(path)
     start_time = time.time()
-    typewriter.print_status('Searching...')
+    if options.get('quiet').get('enabled') is False:
+      typewriter.print_status('Searching...')
     if len(files) < cpu_freq:
       matching_files = self.find_files(files, search_term)
     else:
@@ -161,7 +171,8 @@ class CLI:
       matching_files = self.find_files_threaded(files, search_term)
     end_time = time.time()
     elapsed = get_elapsed_time(start_time, end_time)
-    typewriter.print(f"Found {len(matching_files):,} matches in {elapsed}s.")
+    if options.get('quiet').get('enabled') is False:
+      typewriter.print(f"Found {len(matching_files):,} matches in {elapsed}s.")
     if len(matching_files) == 0:
       return
     columns = typewriter.list_to_columns(matching_files)
@@ -182,14 +193,17 @@ commands = {
   'description': 'Shows how many files are in a given directory'},
 }
 options = {
+  'full-path': {'long': ['full-path'], 'short': ['f'],
+  'description': "Search the full path instead of just the file's basename"},
+
   'dirs': {'long': ['dirs'], 'short': ['d'],
   'description': 'Search for directories instead of files'},
-  
+
   'case': {'long': ['case-sensetive'], 'short': ['c'],
   'description': 'Makes searching case sensetive'},
-  
-  'full-path': {'long': ['full-path'], 'short': ['f'],
-  'description': 'Use the search term to search in full path of file instead of its basename'},
+
+  'quiet': {'long': ['quiet'], 'short': ['q'],
+  'description': "Don't show progress bars and stats"},
 }
 help = captain.generate_help(app, description, commands, options)
 
