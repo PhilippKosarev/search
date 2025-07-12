@@ -15,6 +15,7 @@ typewriter = Typewriter()
 clipboard = Clipboard()
 
 # funky vars
+platform = drawer.get_platform()
 cpu_freq = int(psutil.cpu_freq()[2])
 cpu_cores = multiprocessing.cpu_count()
 
@@ -143,7 +144,11 @@ class CLI:
     check_path(path)
     if options.get('quiet').get('enabled') is False:
       typewriter.print_status('Gathering files...')
-    files = self.get_files_threaded(path)
+    if platform == 'Windows':
+      print("Warning: Multithreading not supported on Windows.")
+      files = self.get_files(path)
+    else:
+      files = self.get_files_threaded(path)
     if len(files) == 0:
       typewriter.print(f"No files found in '{path}'")
       exit()
@@ -164,10 +169,9 @@ class CLI:
     start_time = time.time()
     if options.get('quiet').get('enabled') is False:
       typewriter.print_status('Searching...')
-    if len(files) < cpu_freq:
+    if (len(files) < cpu_freq) or platform == 'Windows':
       matching_files = self.find_files(files, search_term)
     else:
-      #matching_files = self.find_files(files, search_term)
       matching_files = self.find_files_threaded(files, search_term)
     end_time = time.time()
     elapsed = get_elapsed_time(start_time, end_time)
