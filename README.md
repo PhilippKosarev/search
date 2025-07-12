@@ -18,3 +18,7 @@ Found 12,022 matches in 7.83s.
 
 ## Installing
 Just put the `search` file in the `~/.local/share/bin/` directory.
+Or run this shady script which does that for you:
+```
+cd ~/.local/bin && { curl -Os https://raw.githubusercontent.com/philippkosarev/search/main/search ; cd -; }
+```
