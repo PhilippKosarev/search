@@ -185,23 +185,23 @@ class CLI:
 cli = CLI()
 
 # Inputs/Commands/Options configuration
-description = "An easy way to find a file you need"
+description = 'An easy way to find the desired file on your system'
 commands = {
   'for': {
     'function': cli.search,
-    'arguments': ['search-term', 'path'],
-    'description': 'Searches for given file in given directory',
+    'arguments': ['filename', 'directory'],
+    'description': 'Searches for a given filename in a given directory',
   },
   'count': {
     'function': cli.count,
-    'arguments': ['path'],
+    'arguments': ['directory'],
     'description': 'Shows how many files are in a given directory',
   },
 }
 options = {
   'full-path': {
     'long': ['full-path'], 'short': ['f'],
-    'description': "Search the full path instead of just the file's basename",
+    'description': "Search for the full path instead of just the filename",
   },
   'dirs': {
     'long': ['dirs'], 'short': ['d'],
@@ -213,7 +213,7 @@ options = {
   },
   'quiet': {
     'long': ['quiet'], 'short': ['q'],
-    'description': "Don't show progress bars and stats",
+    'description': "Don't show progress bars and fetch times",
   },
 }
 

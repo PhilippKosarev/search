@@ -5,12 +5,11 @@ A simple CLI utility to find that *one* file somewhere among the 5 million files
 - Written in Python
 - Fast and responsive
 - Tells you what it's doing
-- Utilises all the CPU threads for maximum speed
-- Uses [libjam](https://github.com/PhilippKosarev/libjam).
+- Utilises all the CPU threads
 
 ## Example usecase
 Finding all the `.desktop` files on your system.
-```bash
+```
 $ search for .desktop /
 Found 5,529,282 files in 6.82s.
 Found 12,022 matches in 7.83s.
