@@ -8,11 +8,7 @@ Process = multiprocessing.Process
 SimpleQueue = multiprocessing.SimpleQueue
 
 # Jamming
-from libjam import Captain, Drawer, Typewriter, Clipboard
-captain = Captain()
-drawer = Drawer()
-typewriter = Typewriter()
-clipboard = Clipboard()
+from libjam import captain, drawer, typewriter, clipboard
 
 # funky vars
 platform = drawer.get_platform()
@@ -41,7 +37,7 @@ def to_chunks(list_lenght):
   return (chunks, chunk_size)
 
 def check_path(path):
-  if drawer.exists(path) is False:
+  if not drawer.exists(path):
     print(f"Folder at '{path}' does not exist.")
     exit()
   if drawer.is_file(path):
@@ -51,7 +47,7 @@ def check_path(path):
 class CLI:
   
   def get_files(self, path, queue=None):
-    if options.get('dirs').get('enabled'):
+    if options.get('dirs'):
       files = drawer.get_folders_recursive(path)
     else:
       files = drawer.get_files_recursive(path)
@@ -63,7 +59,7 @@ class CLI:
   def get_files_threaded(self, path):
     folders = drawer.get_folders(path)
     files = []
-    if options.get('dirs').get('enabled'):
+    if options.get('dirs'):
       files += folders
     else:
       files += drawer.get_files(path)
@@ -75,7 +71,7 @@ class CLI:
       processes.append(process)
     iteration = 0
     for process in processes:
-      if options.get('quiet').get('enabled') is False:
+      if not options.get('quiet'):
         typewriter.print_progress('Gathering', iteration, len(processes))
       files += queue.get()
       iteration += 1
@@ -95,22 +91,22 @@ class CLI:
     iteration = 0
     for file in files:
       eval_string = f"search_term"
-      if options.get('case').get('enabled') is False:
+      if not options.get('case'):
         eval_string += '.lower()'
-      if options.get('full-path').get('enabled'):
-        if options.get('case').get('enabled'):
+      if options.get('full-path'):
+        if options.get('case'):
           eval_string = f"file.endswith({eval_string})"
         else:
           eval_string = f"file.lower().endswith({eval_string})"
       else:
-        if options.get('case').get('enabled'):
+        if options.get('case'):
           eval_string += f" in file"
         else:
           eval_string += f" in file.lower()"
       if eval(eval_string):
         matching_files.append(file)
       iteration += 1
-      if (options.get('quiet').get('enabled') is False) and (queue is None) and (num_of_files < 1000):
+      if (not options.get('quiet')) and (queue is None) and (num_of_files < 1000):
         typewriter.print_progress('Searching', iteration, num_of_files)
     if queue is None:
       return sorted(matching_files)
@@ -129,7 +125,7 @@ class CLI:
       processes.append(process)
     iteration = 0
     for process in processes:
-      if options.get('quiet').get('enabled') is False:
+      if not options.get('quiet'):
         typewriter.print_progress('Searching', iteration * chunk_size, cpu_cores * chunk_size)
       matching_files += queue.get()
       iteration += 1
@@ -142,7 +138,7 @@ class CLI:
   def get_files_wrapper(self, path):
     start_time = time.time()
     check_path(path)
-    if options.get('quiet').get('enabled') is False:
+    if not options.get('quiet'):
       typewriter.print_status('Gathering files...')
     if platform == 'Windows':
       print("Warning: Multithreading not supported on Windows.")
@@ -155,19 +151,15 @@ class CLI:
     end_time = time.time()
     get_elapsed_time(start_time, end_time)
     elapsed = get_elapsed_time(start_time, end_time)
-    if options.get('quiet').get('enabled') is False:
+    if not options.get('quiet'):
       typewriter.print(f"Found {len(files):,} files in {elapsed}s.")
     return files
 
-  def count(self, path):
-    files = self.get_files_wrapper(path)
-    if options.get('quiet').get('enabled'):
-      typewriter.print(f"{len(files):,}")
-
-  def search(self, search_term, path):
+  def search(self, args, options):
+    search_term, path = args
     files = self.get_files_wrapper(path)
     start_time = time.time()
-    if options.get('quiet').get('enabled') is False:
+    if not options.get('quiet'):
       typewriter.print_status('Searching...')
     if (len(files) < cpu_freq) or platform == 'Windows':
       matching_files = self.find_files(files, search_term)
@@ -175,7 +167,7 @@ class CLI:
       matching_files = self.find_files_threaded(files, search_term)
     end_time = time.time()
     elapsed = get_elapsed_time(start_time, end_time)
-    if options.get('quiet').get('enabled') is False:
+    if not options.get('quiet'):
       typewriter.print(f"Found {len(matching_files):,} matches in {elapsed}s.")
     if len(matching_files) == 0:
       return
@@ -185,41 +177,50 @@ class CLI:
     else:
       typewriter.print(columns)
 
-# Inputs/Commands/Options configuration
-app = "search"
-description = "An easy way to find a file you need"
-# help = "" # If you wish to set your own help page text
-commands = {
-  'for':     {'function': CLI.search,
-  'description': 'Searches for given file in given directory'},
-  
-  'count':     {'function': CLI.count,
-  'description': 'Shows how many files are in a given directory'},
-}
-options = {
-  'full-path': {'long': ['full-path'], 'short': ['f'],
-  'description': "Search the full path instead of just the file's basename"},
-
-  'dirs': {'long': ['dirs'], 'short': ['d'],
-  'description': 'Search for directories instead of files'},
-
-  'case': {'long': ['case-sensetive'], 'short': ['c'],
-  'description': 'Makes searching case sensetive'},
-
-  'quiet': {'long': ['quiet'], 'short': ['q'],
-  'description': "Don't show progress bars and stats"},
-}
-help = captain.generate_help(app, description, commands, options)
-
-# Parsing user input
-interpretation = captain.interpret(app, help, commands, options)
-function = interpretation.get('function')
-options = interpretation.get('options')
+  def count(self, path, options):
+    files = self.get_files_wrapper(path)
+    if options.get('quiet'):
+      typewriter.print(f"{len(files):,}")
 
 cli = CLI()
-# Executing function
+
+# Inputs/Commands/Options configuration
+description = "An easy way to find a file you need"
+commands = {
+  'for': {
+    'function': cli.search,
+    'arguments': ['search-term', 'path'],
+    'description': 'Searches for given file in given directory',
+  },
+  'count': {
+    'function': cli.count,
+    'arguments': ['path'],
+    'description': 'Shows how many files are in a given directory',
+  },
+}
+options = {
+  'full-path': {
+    'long': ['full-path'], 'short': ['f'],
+    'description': "Search the full path instead of just the file's basename",
+  },
+  'dirs': {
+    'long': ['dirs'], 'short': ['d'],
+    'description': 'Search for directories instead of files',
+  },
+  'case': {
+    'long': ['case-sensetive'], 'short': ['c'],
+    'description': 'Makes searching case sensitive',
+  },
+  'quiet': {
+    'long': ['quiet'], 'short': ['q'],
+    'description': "Don't show progress bars and stats",
+  },
+}
+
+# Running
+function, arguments, options = captain.sail(description, commands, options)
 try:
-  exec(f"cli.{function}")
+  function(arguments, options)
 except KeyboardInterrupt:
   typewriter.clear_lines(0)
   print('Operation cancelled.', end='')
